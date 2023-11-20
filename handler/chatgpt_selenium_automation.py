@@ -115,7 +115,6 @@ class ChatGPTAutomation:
         return [(element.text, element) for element in elements]
 
     def check_login(self):
-        import ipdb;ipdb.sset_trace()
         button_text = "Log in"
 
         elements = self.driver.find_elements(By.XPATH, f'//*[contains(text(), "{button_text}")]')
