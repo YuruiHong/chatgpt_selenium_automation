@@ -1,13 +1,13 @@
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.common.by import By
+import asyncio
 import time
 import socket
 import threading
 import os
+from collections import deque
 
-
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
 
 class ChatGPTAutomation:
 
@@ -31,8 +31,6 @@ class ChatGPTAutomation:
         self.wait_for_human_verification()
         self.driver = self.setup_webdriver(free_port)
 
-
-
     def find_available_port(self):
         """ This function finds and returns an available port number on the local machine by creating a temporary
             socket, binding it to an ephemeral port, and then closing the socket. """
@@ -41,8 +39,6 @@ class ChatGPTAutomation:
             s.bind(('', 0))
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             return s.getsockname()[1]
-
-
 
     def launch_chrome_with_remote_debugging(self, port, url):
         """ Launches a new Chrome instance with remote debugging enabled on the specified port and navigates to the
@@ -55,8 +51,6 @@ class ChatGPTAutomation:
         chrome_thread = threading.Thread(target=open_chrome)
         chrome_thread.start()
 
-
-
     def setup_webdriver(self, port):
         """  Initializes a Selenium WebDriver instance, connected to an existing Chrome browser
              with remote debugging enabled on the specified port"""
@@ -66,18 +60,45 @@ class ChatGPTAutomation:
         driver = webdriver.Chrome(executable_path=self.chrome_driver_path, options=chrome_options)
         return driver
 
+    @staticmethod
+    def are_elements_same(queue):
+        if not queue:
+            return True
 
+        if len(queue) < queue.maxlen:
+            return False
+
+        first_element = queue[0]
+        for element in queue:
+            if element != first_element:
+                return False
+
+        return True
+
+    async def check_message_generation(self):
+        values = deque(maxlen=3)
+        last_response = self.return_last_response()
+        values.append(hash(last_response))
+
+        await asyncio.sleep(0.3)
+        while not self.are_elements_same(values):
+            await asyncio.sleep(0.5)
+            last_response = self.return_last_response()
+            values.append(hash(last_response))
+
+        return last_response
+
+    def await_message_generation(self):
+        return asyncio.run(self.check_message_generation())
 
     def send_prompt_to_chatgpt(self, prompt):
-        """ Sends a message to ChatGPT and waits for 20 seconds for the response """
-
-        input_box = self.driver.find_element(by=By.XPATH, value='//textarea[contains(@placeholder, "Send a message")]')
+        input_box = self.driver.find_element(
+            by=By.XPATH, value='//textarea[contains(@placeholder, "Message ChatGPT…")]'
+        )
         self.driver.execute_script(f"arguments[0].value = '{prompt}';", input_box)
         input_box.send_keys(Keys.RETURN)
         input_box.submit()
-        time.sleep(20)
-
-
+        time.sleep(.9)
 
     def return_chatgpt_conversation(self):
         """
@@ -85,8 +106,6 @@ class ChatGPTAutomation:
         """
 
         return self.driver.find_elements(by=By.CSS_SELECTOR, value='div.text-base')
-
-
 
     def save_conversation(self, file_name):
         """
@@ -111,15 +130,11 @@ class ChatGPTAutomation:
                 file.write(
                     f"prompt: {chatgpt_conversation[i].text}\nresponse: {chatgpt_conversation[i + 1].text}\n\n{delimiter}\n\n")
 
-
-
     def return_last_response(self):
         """ :return: the text of the last chatgpt response """
 
         response_elements = self.driver.find_elements(by=By.CSS_SELECTOR, value='div.text-base')
         return response_elements[-1].text
-
-
 
     def wait_for_human_verification(self):
         print("You need to manually complete the log-in or the human verification if required.")
@@ -136,8 +151,6 @@ class ChatGPTAutomation:
                 time.sleep(5)  # You can adjust the waiting time as needed
             else:
                 print("Invalid input. Please enter 'y' or 'n'.")
-
-
 
     def quit(self):
         """ Closes the browser and terminates the WebDriver session."""
