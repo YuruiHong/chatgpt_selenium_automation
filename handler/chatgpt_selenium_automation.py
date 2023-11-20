@@ -107,6 +107,13 @@ class ChatGPTAutomation:
 
         return self.driver.find_elements(by=By.CSS_SELECTOR, value='div.text-base')
 
+    def get_chatgpt_threads(self):
+        uuid_pattern = "/c/"
+        elements = self.driver.find_elements(
+            by=By.XPATH, value=f'//a[contains(@href, "{uuid_pattern}")]'
+        )
+        return [(element.text, element) for element in elements]
+
     def save_conversation(self, file_name):
         """
         It saves the full chatgpt conversation of the tab open in chrome into a text file, with the following format:

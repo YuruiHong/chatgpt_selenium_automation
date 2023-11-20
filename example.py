@@ -13,6 +13,9 @@ chatgpt = ChatGPTAutomation(chrome_path, chrome_driver_path)
 prompt = "What are the benefits of exercise?"
 chatgpt.send_prompt_to_chatgpt(prompt)
 
+# Retrieve previous conversations with ChatGPT
+threads = chatgpt.get_chatgpt_threads(chatgpt)
+
 # Retrieve the last response from ChatGPT
 response = chatgpt.await_message_generation()
 
