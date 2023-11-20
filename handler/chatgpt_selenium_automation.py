@@ -28,8 +28,8 @@ class ChatGPTAutomation:
         url = r"https://chat.openai.com"
         free_port = self.find_available_port()
         self.launch_chrome_with_remote_debugging(free_port, url)
-        self.wait_for_human_verification()
         self.driver = self.setup_webdriver(free_port)
+        self.wait_for_human_verification()
 
     def find_available_port(self):
         """ This function finds and returns an available port number on the local machine by creating a temporary
@@ -114,6 +114,13 @@ class ChatGPTAutomation:
         )
         return [(element.text, element) for element in elements]
 
+    def check_login(self):
+        import ipdb;ipdb.sset_trace()
+        button_text = "Log in"
+
+        elements = self.driver.find_elements(By.XPATH, f'//*[contains(text(), "{button_text}")]')
+        return len(elements) > 2
+
     def save_conversation(self, file_name):
         """
         It saves the full chatgpt conversation of the tab open in chrome into a text file, with the following format:
@@ -147,6 +154,9 @@ class ChatGPTAutomation:
         print("You need to manually complete the log-in or the human verification if required.")
 
         while True:
+            if self.check_login():
+                break
+
             user_input = input(
                 "Enter 'y' if you have completed the log-in or the human verification, or 'n' to check again: ").lower()
 
