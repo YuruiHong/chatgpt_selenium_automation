@@ -1,4 +1,6 @@
 # Byte-compiled / optimized / DLL files
+chromedriver-linux64/LICENSE.chromedriver
+chromedriver-linux64/chromedriver
 __pycache__/
 *.py[cod]
 *$py.class

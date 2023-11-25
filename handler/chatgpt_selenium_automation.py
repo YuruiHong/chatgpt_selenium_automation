@@ -8,6 +8,11 @@ from collections import deque
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
+import requests
+from urllib.parse import urlparse, unquote
+
+IMAGE_PATH = '/home/bayram/byk/chatgpt_selenium_automation/image'
+
 
 class ChatGPTAutomation:
 
@@ -76,7 +81,7 @@ class ChatGPTAutomation:
         return True
 
     async def check_message_generation(self):
-        values = deque(maxlen=3)
+        values = deque(maxlen=5)
         last_response = self.return_last_response()
         values.append(hash(last_response))
 
@@ -95,6 +100,7 @@ class ChatGPTAutomation:
         input_box = self.driver.find_element(
             by=By.XPATH, value='//textarea[contains(@placeholder, "Message ChatGPT…")]'
         )
+        prompt = prompt.replace("'", "\\'").replace("\n", "\\n")
         self.driver.execute_script(f"arguments[0].value = '{prompt}';", input_box)
         input_box.send_keys(Keys.RETURN)
         input_box.submit()
@@ -112,13 +118,38 @@ class ChatGPTAutomation:
         elements = self.driver.find_elements(
             by=By.XPATH, value=f'//a[contains(@href, "{uuid_pattern}")]'
         )
-        return [(element.text, element) for element in elements]
+        return {element.text: element for element in elements}
 
     def check_login(self):
         button_text = "Log in"
 
         elements = self.driver.find_elements(By.XPATH, f'//*[contains(text(), "{button_text}")]')
         return len(elements) > 2
+
+    def find_images(self):
+        images = []
+        elements = self.driver.find_elements(By.XPATH, '//*[@src]')
+        for element in elements:
+            src = element.get_attribute('src')
+            if src and src.startswith('https://files'):
+                images.append(src)
+        return images
+
+    @staticmethod
+    def download_image(image_url, file_name):
+        response = requests.get(image_url)
+        if response.status_code == 200:
+            with open(file_name, 'wb') as file:
+                file.write(response.content)
+
+    @staticmethod
+    def list_files(directory):
+        try:
+            # List all files and directories in the given directory
+            files = os.listdir(directory)
+            return files
+        except FileNotFoundError:
+            return "Directory not found."
 
     def save_conversation(self, file_name):
         """

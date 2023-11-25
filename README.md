@@ -38,7 +38,10 @@ chatgpt.save_conversation(file_name)
 # Close the browser and terminate the WebDriver session
 chatgpt.quit()
    ```
-   
+
+## Database 
+using https://sqlitebrowser.org/dl/
+
    
 ## Note 
 
