@@ -16,7 +16,7 @@ IMAGE_PATH = '/home/bayram/byk/chatgpt_selenium_automation/image'
 
 class ChatGPTAutomation:
 
-    def __init__(self, chrome_path, chrome_driver_path):
+    def __init__(self, chrome_path, chrome_driver_path, profile_directory=None, skip_human_verification=False, prefix="", suffix=""):
         """
         This constructor automates the following steps:
         1. Open a Chrome browser with remote debugging enabled at a specified URL.
@@ -29,12 +29,15 @@ class ChatGPTAutomation:
 
         self.chrome_path = chrome_path
         self.chrome_driver_path = chrome_driver_path
+        self.prefix = prefix
+        self.suffix = suffix
 
         url = r"https://chat.openai.com"
         free_port = self.find_available_port()
-        self.launch_chrome_with_remote_debugging(free_port, url)
+        self.launch_chrome_with_remote_debugging(free_port, url, profile_directory)
         self.driver = self.setup_webdriver(free_port)
-        self.wait_for_human_verification()
+        if not skip_human_verification:
+            self.wait_for_human_verification()
 
     def find_available_port(self):
         """ This function finds and returns an available port number on the local machine by creating a temporary
@@ -45,12 +48,15 @@ class ChatGPTAutomation:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             return s.getsockname()[1]
 
-    def launch_chrome_with_remote_debugging(self, port, url):
+    def launch_chrome_with_remote_debugging(self, port, url, profile_directory=None):
         """ Launches a new Chrome instance with remote debugging enabled on the specified port and navigates to the
             provided url """
 
         def open_chrome():
-            chrome_cmd = f"{self.chrome_path} --remote-debugging-port={port} --user-data-dir=remote-profile {url}"
+            chrome_cmd = f"{self.chrome_path} --remote-debugging-port={port}"
+            if profile_directory:
+                chrome_cmd += f" --profile-directory='{profile_directory}'"
+            chrome_cmd += f" {url}"
             os.system(chrome_cmd)
 
         chrome_thread = threading.Thread(target=open_chrome)
@@ -101,7 +107,7 @@ class ChatGPTAutomation:
             by=By.XPATH, value='//textarea[contains(@placeholder, "Message ChatGPT…")]'
         )
         prompt = prompt.replace("'", "\\'").replace("\n", "\\n")
-        self.driver.execute_script(f"arguments[0].value = '{prompt}';", input_box)
+        self.driver.execute_script(f"arguments[0].value = '{self.prefix}\\n{prompt}\\n{self.suffix}';", input_box)
         input_box.send_keys(Keys.RETURN)
         input_box.submit()
         time.sleep(.9)
@@ -151,7 +157,7 @@ class ChatGPTAutomation:
         except FileNotFoundError:
             return "Directory not found."
 
-    def save_conversation(self, file_name):
+    def save_conversation(self, file_name, otype='w', last_index=None):
         """
         It saves the full chatgpt conversation of the tab open in chrome into a text file, with the following format:
             prompt: ...
@@ -162,17 +168,31 @@ class ChatGPTAutomation:
 
         :param file_name: name of the file where you want to save
         """
-
         directory_name = "conversations"
         if not os.path.exists(directory_name):
             os.makedirs(directory_name)
+        file_path = os.path.join(directory_name, file_name)
+        # raw_limilation_errors = ["ChatGPT\nYou've reached our limit of messages per hour. Please try again later.", "ChatGPT\nToo many requests in 1 hour. Try again later."]
+        raw_limilation_errors = ["ChatGPT"]
+        
 
-        delimiter = "|^_^|"
         chatgpt_conversation = self.return_chatgpt_conversation()
-        with open(os.path.join(directory_name, file_name), "a") as file:
-            for i in range(0, len(chatgpt_conversation), 2):
-                file.write(
-                    f"prompt: {chatgpt_conversation[i].text}\nresponse: {chatgpt_conversation[i + 1].text}\n\n{delimiter}\n\n")
+        conversation_length = len(chatgpt_conversation)
+        if last_index:
+            with open(file_path, otype) as file:
+                for i in range(0, conversation_length, 4):
+                    last_index += 1
+                    answer = chatgpt_conversation[i+2].text.split('\n')[1]
+                    if answer in raw_limilation_errors:
+                        break
+                    file.write("\n"+str(last_index)+" "+answer)
+        else:
+            with open(file_path, otype) as file:
+                for i in range(0, conversation_length, 4):
+                    answer = chatgpt_conversation[i+2].text.split('\n')[1]
+                    if answer in raw_limilation_errors:
+                        break
+                    file.write("\n"+answer)
 
     def return_last_response(self):
         """ :return: the text of the last chatgpt response """
@@ -204,7 +224,3 @@ class ChatGPTAutomation:
         print("Closing the browser...")
         self.driver.close()
         self.driver.quit()
-
-
-
-
