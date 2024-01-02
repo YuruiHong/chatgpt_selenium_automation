@@ -106,7 +106,7 @@ class ChatGPTAutomation:
         input_box = self.driver.find_element(
             by=By.XPATH, value='//textarea[contains(@placeholder, "Message ChatGPT…")]'
         )
-        prompt = prompt.replace("'", "\\'").replace("\n", "\\n")
+        prompt = prompt.replace("\\\'", "'").replace("'", "\\'").replace("\n", "\\n")
         self.driver.execute_script(f"arguments[0].value = '{self.prefix}\\n{prompt}\\n{self.suffix}';", input_box)
         input_box.send_keys(Keys.RETURN)
         input_box.submit()
